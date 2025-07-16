@@ -29,6 +29,7 @@ function loadD3() {
 }
 
 const doStuff = () => {
+  console.log('in do stuff');
   // Create slider container
   const wrapper = document.createElement('div');
   wrapper.className = 'bubble-chart';
