@@ -147,6 +147,7 @@ const init = async () => {
   console.log('testing public file');
   await loadD3();
   console.log('D£: ', d3);
+  doStuff();
 };
 
 init();
