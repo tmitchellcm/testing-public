@@ -21,6 +21,8 @@ const loadScript = (scriptUrl) => {
 };
 
 const doStuff = () => {
+  // constants
+  console.log('widget constants: ', widgetConstants.KPI_1_RATE);
   //css
   const style = document.createElement('style');
   style.innerHTML = `
