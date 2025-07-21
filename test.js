@@ -1,154 +1,338 @@
-function loadD3() {
+const loadScript = (scriptUrl) => {
   return new Promise((resolve, reject) => {
-    // If D3 is already loaded, resolve immediately
-    if (window.d3) {
-      resolve(window.d3);
-      return;
-    }
-
     // Create the script tag
-    const d3Script = document.createElement('script');
-    d3Script.src = `https://d3js.org/d3.v7.min.js`;
-    d3Script.async = true;
+    const script = document.createElement('script');
+    script.src = scriptUrl;
+    script.async = true;
 
     // Resolve on load
-    d3Script.onload = () => {
-      if (window.d3) {
-        resolve(window.d3);
-      } else {
-        reject(new Error('D3 failed to load.'));
-      }
+    script.onload = () => {
+      console.log('loaded script: ', scriptUrl);
+      resolve();
     };
 
     // Reject on error
-    d3Script.onerror = () => reject(new Error('Failed to load D3 script.'));
+    script.onerror = () =>
+      reject(new Error(`Failed to load resource at ${scriptUrl}`));
 
     // Inject script into document
-    document.head.appendChild(d3Script);
+    document.head.appendChild(script);
   });
-}
+};
 
 const doStuff = () => {
-  console.log('in do stuff');
-  // Create slider container
+  //css
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .highlighted {
+        outline: 2px solid mediumpurple;
+        outline-offset: -2px;
+    }
+    `;
+  document.head.appendChild(style);
+  // create HTML bits
   const wrapper = document.createElement('div');
-  wrapper.className = 'bubble-chart';
   wrapper.innerHTML = `
-    <svg width="900" height="500"></svg>
-
-    <div clasName="slider-container" style="display:flex; flex-direction: column;">
-    <label>Times Shown (Bubble Size): <span id="sizeVal">50</span>
-    <input id="sizeSlider" type="range" min="1" max="50" value="50">
-    </label>
-
-
-    <label>Days Running (X-axis): <span id="xVal">9</span>
-    <input id="xSlider" type="range" min="0" max="11" value="9">
-    </label>
-
-
-    <label>Effectiveness (Y-axis): <span id="yVal">2</span>
-    <input id="ySlider" type="range" min="-3" max="3" step="0.1" value="2"></label>
-    </div>
-
+  <div style="width: 100%;height: 100vh;max-width: 1000px;margin: 0 auto;" id="chartContainer"></div>
+  <div style="max-width: 1000px; margin: 20px auto">
+    <label>X Benchmark: <input type="range" id="xBenchSlider" min="0" max="100" value="50"> <span id="xBenchVal">50</span></label>
+    <br>
+    <label>Y Benchmark: <input type="range" id="yBenchSlider" min="0" max="100" value="50"> <span id="yBenchVal">50</span></label>
+  </div>
+  <div id="tableContainer" style="max-width: 1000px; margin: 20px auto"></div>
   `;
   document.querySelector('#widget').appendChild(wrapper);
 
-  const svg = d3.select(wrapper).select('svg');
-  const width = +svg.attr('width') - 100;
-  const height = +svg.attr('height') - 100;
-  const margin = { top: 20, right: 60, bottom: 50, left: 60 };
+  // JS
+  window.addEventListener('resize', () => {
+    chart.resize();
+  });
+  let xBenchmark = 50;
+  let yBenchmark = 50;
+  const data = [...Array(12)].map((_, i) => ({
+    name: String.fromCharCode(65 + i),
+    x: Math.floor(Math.random() * 100),
+    y: Math.floor(Math.random() * 100),
+    r: Math.floor(Math.random() * 20 + 10),
+  }));
+  const quadrantColors = {
+    BOOST: '#a6f1ff', //blue
+    ITERATE: '#c8e6c9', //green
+    MONITOR: '#ffe082', //yellow
+    CUT: '#ef9a9a', //red
+  };
 
-  const data = [
-    { name: 'FB Ads', days: 9, effectiveness: 2, timesShown: 50 },
-    { name: 'Reels', days: 2, effectiveness: 2, timesShown: 45 },
-    { name: 'Display', days: 1, effectiveness: 1, timesShown: 10 },
-    { name: 'Email', days: 2, effectiveness: -1.5, timesShown: 8 },
-    { name: 'AdWords', days: 3, effectiveness: -2, timesShown: 30 },
-    { name: 'Short Messages', days: 3, effectiveness: 1.2, timesShown: 12 },
-    { name: 'Banners', days: 4, effectiveness: 1.1, timesShown: 20 },
-    { name: 'Hello Bar', days: 6, effectiveness: 1.3, timesShown: 10 },
-    {
-      name: 'Google Remarketing',
-      days: 7,
-      effectiveness: -1.5,
-      timesShown: 35,
-    },
-    { name: 'IG Story', days: 8, effectiveness: 1.5, timesShown: 45 },
-  ];
-  const x = d3.scaleLinear().domain([0, 11]).range([margin.left, width]);
-  const y = d3.scaleLinear().domain([-3, 3]).range([height, margin.top]);
-  const r = d3.scaleSqrt().domain([1, 50]).range([5, 40]);
-  const color = d3.scaleSequential(d3.interpolateRdYlGn).domain([50, 1]);
-
-  svg
-    .append('g')
-    .attr('transform', `translate(0,${y(0)})`)
-    .call(d3.axisBottom(x));
-
-  svg
-    .append('g')
-    .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y));
-
-  const circles = svg
-    .selectAll('circle')
-    .data(data)
-    .enter()
-    .append('circle')
-    .attr('stroke', '#333');
-
-  const labels = svg
-    .selectAll('text.label')
-    .data(data)
-    .enter()
-    .append('text')
-    .attr('class', 'label')
-    .attr('font-size', '12px')
-    .attr('text-anchor', 'middle');
-
-  function update() {
-    circles
-      .attr('cx', (d) => x(d.days))
-      .attr('cy', (d) => y(d.effectiveness))
-      .attr('r', (d) => r(d.timesShown))
-      .attr('fill', (d) => color(d.timesShown));
-
-    labels
-      .attr('x', (d) => x(d.days))
-      .attr('y', (d) => y(d.effectiveness) + 4)
-      .text((d) => d.name);
+  function getQuadrant(d) {
+    if (d.y > yBenchmark && d.x <= xBenchmark) {
+      return 'BOOST';
+    }
+    if (d.y > yBenchmark && d.x >= xBenchmark) {
+      return 'ITERATE';
+    }
+    if (d.y <= yBenchmark && d.x <= xBenchmark) {
+      return 'MONITOR';
+    }
+    return 'CUT';
   }
+  let selectedPointName = null;
+  const chart = echarts.init(document.getElementById('chartContainer'));
+  const seriesData = data.map((d) => ({
+    name: d.name,
+    value: [d.x, d.y, d.r],
+    symbolSize: d.r,
+    itemStyle: {
+      color: 'mediumpurple',
+      borderColor: '#7b68ee',
+      borderWidth: 1,
+    },
+    label: {
+      show: true,
+      position: 'top',
+      formatter: d.name,
+      fontSize: 10,
+    },
+  }));
 
-  update();
+  function renderChart() {
+    const option = {
+      xAxis: {
+        name: 'Impressions',
+        min: 0,
+        max: 100,
+      },
+      yAxis: {
+        name: 'Performance',
+        min: 0,
+        max: 100,
+      },
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: 'red',
+        borderColor: '#ccc',
+        borderWidth: 1,
+        borderRadius: 20,
+        textStyle: {
+          color: '#333',
+          fontSize: 12,
+          fontFamily: 'sans-serif',
+        },
+      },
+      series: [
+        {
+          type: 'custom',
+          renderItem: function (params, api) {
+            const x0 = api.coord([0, 0]);
+            const xMid = api.coord([xBenchmark, 0]);
+            const xMax = api.coord([100, 0]);
+            const y0 = api.coord([0, 0]);
+            const yMid = api.coord([0, yBenchmark]);
+            const yMax = api.coord([0, 100]);
+            return {
+              type: 'group',
+              children: [
+                {
+                  type: 'rect',
+                  shape: {
+                    x: x0[0],
+                    y: yMid[1],
+                    width: xMid[0] - x0[0],
+                    height: y0[1] - yMid[1],
+                  },
+                  style: {
+                    fill: quadrantColors.MONITOR,
+                    opacity: 0.2,
+                  },
+                },
+                {
+                  type: 'rect',
+                  shape: {
+                    x: xMid[0],
+                    y: yMid[1],
+                    width: xMax[0] - xMid[0],
+                    height: y0[1] - yMid[1],
+                  },
+                  style: {
+                    fill: quadrantColors.CUT,
+                    opacity: 0.2,
+                  },
+                },
+                {
+                  type: 'rect',
+                  shape: {
+                    x: x0[0],
+                    y: yMax[1],
+                    width: xMid[0] - x0[0],
+                    height: yMid[1] - yMax[1],
+                  },
+                  style: {
+                    fill: quadrantColors.BOOST,
+                    opacity: 0.2,
+                  },
+                },
+                {
+                  type: 'rect',
+                  shape: {
+                    x: xMid[0],
+                    y: yMax[1],
+                    width: xMax[0] - xMid[0],
+                    height: yMid[1] - yMax[1],
+                  },
+                  style: {
+                    fill: quadrantColors.ITERATE,
+                    opacity: 0.2,
+                  },
+                },
+              ],
+            };
+          },
+          data: [0],
+          z: -10,
+        },
+        {
+          type: 'scatter',
+          data: seriesData,
+        },
+        {
+          type: 'line',
+          animation: false,
+          markLine: {
+            symbol: 'none',
+            data: [
+              {
+                xAxis: xBenchmark,
+              },
+            ],
+            lineStyle: {
+              type: 'solid',
+              color: 'red',
+            },
+          },
+        },
+        {
+          type: 'line',
+          animation: false,
+          markLine: {
+            symbol: 'none',
+            data: [
+              {
+                yAxis: yBenchmark,
+              },
+            ],
+            lineStyle: {
+              type: 'dashed',
+              color: '#000',
+            },
+          },
+        },
+      ],
+    };
+    chart.setOption(option);
+  }
+  renderChart();
 
-  // Hook up sliders to FB Ads
-  const fb = data[0];
-
-  wrapper.querySelector('#sizeSlider').addEventListener('input', (e) => {
-    fb.timesShown = Number(e.target.value);
-    wrapper.querySelector('#sizeVal').textContent = fb.timesShown;
-    update();
+  document.getElementById('xBenchSlider').addEventListener('input', (e) => {
+    xBenchmark = +e.target.value;
+    document.getElementById('xBenchVal').textContent = xBenchmark;
+    renderChart();
+    renderTable();
   });
-
-  wrapper.querySelector('#xSlider').addEventListener('input', (e) => {
-    fb.days = Number(e.target.value);
-    wrapper.querySelector('#xVal').textContent = fb.days;
-    update();
+  document.getElementById('yBenchSlider').addEventListener('input', (e) => {
+    yBenchmark = +e.target.value;
+    document.getElementById('yBenchVal').textContent = yBenchmark;
+    renderChart();
+    renderTable();
   });
-
-  wrapper.querySelector('#ySlider').addEventListener('input', (e) => {
-    fb.effectiveness = Number(e.target.value);
-    wrapper.querySelector('#yVal').textContent = fb.effectiveness;
-    update();
+  chart.on('click', function (params) {
+    if (params.seriesType === 'scatter') {
+      selectedPointName = params.data.name;
+      renderTable();
+    }
   });
+  const { createTable, getCoreRowModel } = TableCore;
+  const tableState = {
+    pagination: {
+      pageIndex: 0,
+      pageSize: 5,
+    },
+  };
+
+  function renderTable() {
+    const tableContainer = document.getElementById('tableContainer');
+    tableContainer.innerHTML = '';
+    const table = createTable({
+      data,
+      state: tableState,
+      getRowId: (row) => row.name,
+      getCoreRowModel: getCoreRowModel(),
+      columns: [
+        {
+          id: 'name',
+          accessorKey: 'name',
+          header: 'Name',
+        },
+        {
+          id: 'x',
+          accessorKey: 'x',
+          header: 'Impressions',
+        },
+        {
+          id: 'y',
+          accessorKey: 'y',
+          header: 'Performance',
+        },
+        {
+          id: 'r',
+          accessorKey: 'r',
+          header: 'Size',
+        },
+      ],
+    });
+    const tableEl = document.createElement('table');
+    tableEl.style.width = '100%';
+    tableEl.style.borderCollapse = 'collapse';
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    table.getAllLeafColumns().forEach((col) => {
+      const th = document.createElement('th');
+      th.textContent = col.columnDef.header;
+      th.style.border = '1px solid #aaa';
+      th.style.padding = '6px';
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    tableEl.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    table.getRowModel().rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      const quadrant = getQuadrant(row.original);
+      tr.style.backgroundColor = quadrantColors[quadrant];
+      if (row.original.name === selectedPointName) {
+        tr.classList.add('highlighted');
+      }
+      row.getAllCells().forEach((cell) => {
+        const td = document.createElement('td');
+        td.textContent = cell.getValue();
+        td.style.border = '1px solid #ccc';
+        td.style.padding = '6px';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    tableEl.appendChild(tbody);
+    tableContainer.appendChild(tableEl);
+  }
+  renderTable();
 };
 
 const init = async () => {
   console.log('testing public file');
-  await loadD3();
-  console.log('D£: ', d3);
-  console.log('about to do stuff');
+  await loadScript(
+    `https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js`
+  );
+  await loadScript(
+    `https://unpkg.com/@tanstack/table-core@8.5.15/build/umd/index.production.js`
+  );
+
   doStuff();
 };
 
