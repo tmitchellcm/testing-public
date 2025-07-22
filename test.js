@@ -1,3 +1,4 @@
+consle.log('VITE!')
 (function(){"use strict";/*! *****************************************************************************
     Copyright (c) Microsoft Corporation.
 
