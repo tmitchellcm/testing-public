@@ -1,4 +1,3 @@
-console.log('reacting....');
 this.Widget=function(){"use strict";function K5(r){return r&&r.__esModule&&Object.prototype.hasOwnProperty.call(r,"default")?r.default:r}var _y={exports:{}},Ju={};/**
  * @license React
  * react-jsx-runtime.production.js
