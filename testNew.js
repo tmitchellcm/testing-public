@@ -1,4 +1,4 @@
-console.log('sc');
+console.log('compiler');
 this.Widget=function(){"use strict";function H5(r){return r&&r.__esModule&&Object.prototype.hasOwnProperty.call(r,"default")?r.default:r}var ky={exports:{}},ff={};/**
  * @license React
  * react-jsx-runtime.production.js
